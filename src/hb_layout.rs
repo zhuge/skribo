@@ -21,10 +21,12 @@ thread_local! {
 }
 
 // Per-thread data for HarfBuzz.
+#[allow(unused)]
 struct HbThreadData {
     hb_face_cache: HashMap<FontId, HbFace>,
 }
 
+#[allow(unused)]
 impl HbThreadData {
     fn new() -> HbThreadData {
         HbThreadData {
