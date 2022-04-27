@@ -3,6 +3,7 @@
 use std::ops::Range;
 
 use harfbuzz::sys::{hb_script_t, HB_SCRIPT_COMMON, HB_SCRIPT_INHERITED, HB_SCRIPT_UNKNOWN};
+use harfbuzz::{Direction, Language};
 
 use pathfinder_geometry::vector::Vector2F;
 
@@ -19,10 +20,13 @@ pub struct Layout<S: AsRef<str>> {
     substr_fragments: Vec<LayoutFragment>,
 }
 
+#[allow(unused)]
 pub(crate) struct LayoutFragment {
     // Length of substring covered by this fragment.
     pub(crate) substr_len: usize,
     pub(crate) script: hb_script_t,
+    pub(crate) language: Language,
+    pub(crate) direction: Direction,
     pub(crate) advance: Vector2F,
     pub(crate) glyphs: Vec<FragmentGlyph>,
     pub(crate) font: FontRef,

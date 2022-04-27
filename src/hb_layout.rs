@@ -9,7 +9,7 @@ use harfbuzz::sys::{
     hb_face_reference, hb_face_t, hb_font_create, hb_font_destroy, hb_position_t, hb_shape,
 };
 use harfbuzz::sys::{hb_glyph_info_get_glyph_flags, hb_script_t, HB_GLYPH_FLAG_UNSAFE_TO_BREAK};
-use harfbuzz::{Blob, Buffer, Direction, Language};
+use harfbuzz::{Blob, Buffer};
 
 use crate::collection::FontId;
 use crate::layout::{FragmentGlyph, LayoutFragment};
@@ -85,9 +85,8 @@ pub(crate) fn layout_fragment(
     let mut b = Buffer::new();
     install_unicode_funcs(&mut b);
     b.add_str(text);
-    b.set_direction(Direction::LTR);
     b.set_script(script);
-    b.set_language(Language::from_string("en_US"));
+    b.guess_segment_properties();
     let hb_face = HbFace::new(font);
     unsafe {
         let hb_font = hb_font_create(hb_face.hb_face);
@@ -131,6 +130,8 @@ pub(crate) fn layout_fragment(
         LayoutFragment {
             substr_len: text.len(),
             script,
+            language: b.get_language(),
+            direction: b.get_direction(),
             glyphs: glyphs,
             advance: total_adv,
             font: font.clone(),
