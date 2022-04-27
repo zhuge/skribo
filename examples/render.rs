@@ -10,7 +10,7 @@ use font_kit::hinting::HintingOptions;
 use font_kit::properties::Properties;
 use font_kit::source::SystemSource;
 
-use skribo::{FontCollection, FontFamily, Layout, LayoutSession, TextStyle};
+use skribo::{FontCollection, FontFamily, Layout, TextStyle};
 
 use pathfinder_geometry::transform2d::Transform2F;
 use pathfinder_geometry::vector::{vec2f, vec2i};
@@ -18,7 +18,7 @@ use pathfinder_geometry::vector::{vec2f, vec2i};
 #[cfg(target_family = "windows")]
 const DEVANAGARI_FONT_POSTSCRIPT_NAME: &str = "NirmalaUI";
 #[cfg(target_os = "macos")]
-const DEVANAGARI_FONT_POSTSCRIPT_NAME: &str = "DevanagariUI";
+const DEVANAGARI_FONT_POSTSCRIPT_NAME: &str = "Devanagari MT";
 #[cfg(target_os = "linux")]
 const DEVANAGARI_FONT_POSTSCRIPT_NAME: &str = "NotoSerifDevanagari";
 
@@ -69,60 +69,9 @@ impl SimpleSurface {
         Ok(())
     }
 
-    fn paint_layout(&mut self, layout: &Layout, x: i32, y: i32) {
-        for glyph in &layout.glyphs {
-            let glyph_id = glyph.glyph_id;
-            let glyph_x = (glyph.offset.x() as i32) + x;
-            let glyph_y = (glyph.offset.y() as i32) + y;
-            let bounds = glyph
-                .font
-                .font
-                .raster_bounds(
-                    glyph_id,
-                    layout.size,
-                    Transform2F::default(),
-                    HintingOptions::None,
-                    RasterizationOptions::GrayscaleAa,
-                )
-                .unwrap();
-            println!(
-                "glyph {}, bounds {:?}, {},{}",
-                glyph_id, bounds, glyph_x, glyph_y
-            );
-            if bounds.width() > 0 && bounds.height() > 0 {
-                let origin_adj = bounds.origin().to_f32();
-                let neg_origin = -origin_adj;
-                let mut canvas = Canvas::new(
-                    // Not sure why we need to add the extra pixel of height, probably a rounding isssue.
-                    // In any case, seems to get the job done (with CoreText rendering, anyway).
-                    bounds.size() + vec2i(0, 1),
-                    Format::A8,
-                );
-                glyph
-                    .font
-                    .font
-                    .rasterize_glyph(
-                        &mut canvas,
-                        glyph_id,
-                        // TODO(font-kit): this is missing anamorphic and skew features
-                        layout.size,
-                        Transform2F::from_translation(neg_origin),
-                        HintingOptions::None,
-                        RasterizationOptions::GrayscaleAa,
-                    )
-                    .unwrap();
-                self.paint_from_canvas(
-                    &canvas,
-                    glyph_x + bounds.origin_x(),
-                    glyph_y + bounds.origin_y(),
-                );
-            }
-        }
-    }
-
     fn paint_layout_session<S: AsRef<str>>(
         &mut self,
-        layout: &mut LayoutSession<S>,
+        layout: &mut Layout<S>,
         x: i32,
         y: i32,
         range: Range<usize>,
@@ -261,7 +210,7 @@ fn main() {
     let layout = layout(&style, &collection, &text);
     println!("{:?}", layout);
     */
-    let mut layout = LayoutSession::create(&text, &style, &collection);
+    let mut layout = Layout::create(&text, &style, &collection);
     let mut surface = SimpleSurface::new(200, 50);
     surface.paint_layout_session(&mut layout, 0, 35, 0..text.len());
     surface.write_pgm("out.pgm").unwrap();

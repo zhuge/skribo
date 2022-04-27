@@ -10,7 +10,7 @@ use crate::hb_layout::layout_fragment;
 use crate::unicode_funcs::lookup_script;
 use crate::{FontCollection, FontRef, TextStyle};
 
-pub struct LayoutSession<S: AsRef<str>> {
+pub struct Layout<S: AsRef<str>> {
     text: S,
     style: TextStyle,
     fragments: Vec<LayoutFragment>,
@@ -63,12 +63,12 @@ pub struct GlyphInfo {
     pub offset: Vector2F,
 }
 
-impl<S: AsRef<str>> LayoutSession<S> {
+impl<S: AsRef<str>> Layout<S> {
     pub fn create(
         text: S,
         style: &TextStyle,
         collection: &FontCollection,
-    ) -> LayoutSession<S> {
+    ) -> Layout<S> {
         let mut i = 0;
         let mut fragments = Vec::new();
         while i < text.as_ref().len() {
@@ -81,7 +81,7 @@ impl<S: AsRef<str>> LayoutSession<S> {
             i += script_len;
         }
         let substr_fragments = Vec::new();
-        LayoutSession {
+        Layout {
             text,
             // Does this clone mean we should take style arg by-move?
             style: style.clone(),
