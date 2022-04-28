@@ -4,8 +4,7 @@ use std::ffi::c_void;
 use std::ptr::null_mut;
 
 use harfbuzz_sys::{
-    hb_bool_t, hb_codepoint_t, hb_script_t,
-    hb_unicode_combining_class_t, hb_unicode_funcs_create,
+    hb_bool_t, hb_codepoint_t, hb_script_t, hb_unicode_combining_class_t, hb_unicode_funcs_create,
     hb_unicode_funcs_set_combining_class_func, hb_unicode_funcs_set_compose_func,
     hb_unicode_funcs_set_decompose_func, hb_unicode_funcs_set_mirroring_func,
     hb_unicode_funcs_set_script_func, hb_unicode_funcs_t,
@@ -13,9 +12,7 @@ use harfbuzz_sys::{
 
 use unicode_normalization::char::{canonical_combining_class, compose};
 
-use crate::tables::{
-    CANONICAL_DECOMP_KEY, CANONICAL_DECOMP_VAL, MIRROR_KEY, MIRROR_VAL,
-};
+use crate::tables::{CANONICAL_DECOMP_KEY, CANONICAL_DECOMP_VAL, MIRROR_KEY, MIRROR_VAL};
 
 use crate::script;
 

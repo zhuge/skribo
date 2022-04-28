@@ -3,11 +3,11 @@ extern crate log;
 
 use font_kit::loaders::default::Font;
 
-mod tables;
 mod collection;
-mod shape;
 mod layout;
 mod script;
+mod shape;
+mod tables;
 
 pub use crate::collection::{FontCollection, FontFamily, FontRef};
 pub use layout::Layout;

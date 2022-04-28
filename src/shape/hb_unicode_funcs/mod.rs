@@ -1,9 +1,6 @@
 mod unicode_funcs;
 
-use harfbuzz::{
-    Buffer,
-    sys::hb_buffer_set_unicode_funcs,
-};
+use harfbuzz::{sys::hb_buffer_set_unicode_funcs, Buffer};
 
 pub trait InstallUnicodeFunc {
     fn install_unicodd_funcs(&self);

@@ -3,6 +3,8 @@
 mod hb_font;
 mod hb_unicode_funcs;
 
+use crate::layout::{Fragment, Glyph};
+use crate::{FontRef, TextStyle};
 use harfbuzz::{
     sys::{
         hb_buffer_get_glyph_infos, hb_buffer_get_glyph_positions, hb_glyph_info_get_glyph_flags,
@@ -10,11 +12,9 @@ use harfbuzz::{
     },
     Buffer,
 };
-use pathfinder_geometry::vector::{vec2i, Vector2F};
-use crate::layout::{Fragment, Glyph};
-use hb_unicode_funcs::InstallUnicodeFunc;
-use crate::{FontRef, TextStyle};
 use hb_font::HbFont;
+use hb_unicode_funcs::InstallUnicodeFunc;
+use pathfinder_geometry::vector::{vec2i, Vector2F};
 
 pub(crate) fn shape(
     style: &TextStyle,
