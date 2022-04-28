@@ -2,7 +2,6 @@
 
 use std::fs::File;
 use std::io::Write;
-use std::ops::Range;
 
 use font_kit::canvas::{Canvas, Format, RasterizationOptions};
 use font_kit::family_name::FamilyName;
@@ -74,16 +73,15 @@ impl SimpleSurface {
         layout: &mut Layout<S>,
         x: i32,
         y: i32,
-        range: Range<usize>,
     ) {
-        for run in layout.iter_substr(range) {
-            let font = run.font();
+        for fragment in layout.fragments() {
+            let font = fragment.font();
             let size = 32.0; // TODO: probably should get this from run
-            println!("run, font = {:?}", font);
-            for glyph in run.glyphs() {
-                let glyph_id = glyph.glyph_id;
-                let glyph_x = (glyph.offset.x() as i32) + x;
-                let glyph_y = (glyph.offset.y() as i32) + y;
+            println!("fragment, font = {:?}", font);
+            for run in fragment.glyphs() {
+                let glyph_id = run.glyph.glyph_id;
+                let glyph_x = (run.offset.x() as i32) + x;
+                let glyph_y = (run.offset.y() as i32) + y;
                 let bounds = font
                     .font
                     .raster_bounds(
@@ -124,7 +122,7 @@ impl SimpleSurface {
                         glyph_y + bounds.origin_y(),
                     );
                 }
-                println!("glyph {} @ {:?}", glyph.glyph_id, glyph.offset);
+                println!("glyph {} @ {:?}", run.glyph.glyph_id, run.offset);
             }
         }
     }
@@ -210,6 +208,6 @@ fn main() {
     */
     let mut layout = Layout::create(&text, &style, &collection);
     let mut surface = SimpleSurface::new(200, 50);
-    surface.paint_layout_session(&mut layout, 0, 35, 0..text.len());
+    surface.paint_layout_session(&mut layout, 0, 35);
     surface.write_pgm("out.pgm").unwrap();
 }

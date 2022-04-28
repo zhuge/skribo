@@ -12,7 +12,7 @@ use harfbuzz::sys::{hb_glyph_info_get_glyph_flags, hb_script_t, HB_GLYPH_FLAG_UN
 use harfbuzz::{Blob, Buffer};
 
 use crate::collection::FontId;
-use crate::layout::{FragmentGlyph, LayoutFragment};
+use crate::layout::{Glyph, Fragment};
 use crate::unicode_funcs::install_unicode_funcs;
 use crate::{FontRef, TextStyle};
 
@@ -81,7 +81,7 @@ pub(crate) fn layout_fragment(
     font: &FontRef,
     script: hb_script_t,
     text: &str,
-) -> LayoutFragment {
+) -> Fragment {
     let mut b = Buffer::new();
     install_unicode_funcs(&mut b);
     b.add_str(text);
@@ -116,7 +116,7 @@ pub(crate) fn layout_fragment(
                 glyph.cluster,
                 unsafe_to_break
             );
-            let g = FragmentGlyph {
+            let g = Glyph {
                 cluster: glyph.cluster,
                 advance: adv_f,
                 glyph_id: glyph.codepoint,
@@ -127,7 +127,7 @@ pub(crate) fn layout_fragment(
             glyphs.push(g);
         }
 
-        LayoutFragment {
+        Fragment {
             substr_len: text.len(),
             script,
             language: b.get_language(),

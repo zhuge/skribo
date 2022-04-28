@@ -1,7 +1,5 @@
 //! Retained layout that supports substring queries.
 
-use std::ops::Range;
-
 use harfbuzz::sys::{hb_script_t, HB_SCRIPT_COMMON, HB_SCRIPT_INHERITED, HB_SCRIPT_UNKNOWN};
 use harfbuzz::{Direction, Language};
 
@@ -11,24 +9,22 @@ use crate::hb_layout::layout_fragment;
 use crate::unicode_funcs::lookup_script;
 use crate::{FontCollection, FontRef, TextStyle};
 
+#[allow(unused)]
 pub struct Layout<S: AsRef<str>> {
     text: S,
     style: TextStyle,
-    fragments: Vec<LayoutFragment>,
-
-    // A separate layout for the substring if needed.
-    substr_fragments: Vec<LayoutFragment>,
+    fragments: Vec<Fragment>,
 }
 
 #[allow(unused)]
-pub(crate) struct LayoutFragment {
+pub(crate) struct Fragment {
     // Length of substring covered by this fragment.
     pub(crate) substr_len: usize,
     pub(crate) script: hb_script_t,
     pub(crate) language: Language,
     pub(crate) direction: Direction,
     pub(crate) advance: Vector2F,
-    pub(crate) glyphs: Vec<FragmentGlyph>,
+    pub(crate) glyphs: Vec<Glyph>,
     pub(crate) font: FontRef,
 }
 
@@ -37,7 +33,7 @@ pub(crate) struct LayoutFragment {
 // Discussion topic: this is so similar to hb_glyph_info_t, maybe we
 // should just use that.
 #[allow(unused)]
-pub(crate) struct FragmentGlyph {
+pub struct Glyph {
     pub cluster: u32,
     pub glyph_id: u32,
     pub offset: Vector2F,
@@ -45,27 +41,26 @@ pub(crate) struct FragmentGlyph {
     pub unsafe_to_break: bool,
 }
 
-pub struct LayoutRangeIter<'a> {
-    fragments: &'a [LayoutFragment],
+pub struct LayoutIter<'a> {
+    fragments: &'a [Fragment],
     offset: Vector2F,
     fragment_ix: usize,
 }
 
-pub struct LayoutRun<'a> {
-    // This should potentially be in fragment (would make it easier to binary search)
-    offset: Vector2F,
-    fragment: &'a LayoutFragment,
+pub struct LayoutItem<'a> {
+    pub offset: Vector2F,
+    fragment: &'a Fragment,
 }
 
-pub struct RunIter<'a> {
+pub struct FragmentIter<'a> {
     offset: Vector2F,
-    fragment: &'a LayoutFragment,
+    fragment: &'a Fragment,
     glyph_ix: usize,
 }
 
-pub struct GlyphInfo {
-    pub glyph_id: u32,
+pub struct FragmentItem<'a> {
     pub offset: Vector2F,
+    pub glyph: &'a Glyph,
 }
 
 impl<S: AsRef<str>> Layout<S> {
@@ -81,74 +76,29 @@ impl<S: AsRef<str>> Layout<S> {
             }
             i += script_len;
         }
-        let substr_fragments = Vec::new();
+
         Layout {
             text,
             // Does this clone mean we should take style arg by-move?
             style: style.clone(),
             fragments,
-            substr_fragments,
         }
     }
 
     /// Iterate through all glyphs in the layout.
-    ///
-    /// Note: this is redundant with `iter_substr` with the whole string, might
-    /// not keep it.
-    pub fn iter_all(&self) -> LayoutRangeIter {
-        LayoutRangeIter {
+    pub fn fragments(&self) -> LayoutIter {
+        LayoutIter {
             offset: Vector2F::zero(),
             fragments: &self.fragments,
             fragment_ix: 0,
         }
     }
-
-    /// Iterate through the glyphs in the layout of the substring.
-    ///
-    /// This method reuses as much of the original layout as practical, almost
-    /// entirely reusing the itemization, but possibly doing re-layout.
-    pub fn iter_substr(&mut self, range: Range<usize>) -> LayoutRangeIter {
-        if range == (0..self.text.as_ref().len()) {
-            return self.iter_all();
-        }
-        // TODO: reuse existing layout if unsafe_to_break flag is false at both endpoints.
-        let mut fragment_ix = 0;
-        let mut str_offset = 0;
-        while fragment_ix < self.fragments.len() {
-            let fragment_len = self.fragments[fragment_ix].substr_len;
-            if str_offset + fragment_len > range.start {
-                break;
-            }
-            str_offset += fragment_len;
-            fragment_ix += 1;
-        }
-        self.substr_fragments.clear();
-        while str_offset < range.end {
-            let fragment = &self.fragments[fragment_ix];
-            let fragment_len = fragment.substr_len;
-            let substr_start = range.start.max(str_offset);
-            let substr_end = range.end.min(str_offset + fragment_len);
-            let substr = &self.text.as_ref()[substr_start..substr_end];
-            let font = &fragment.font;
-            let script = fragment.script;
-            // TODO: we should pass in the hb_face too, just for performance.
-            let substr_fragment = layout_fragment(&self.style, font, script, substr);
-            self.substr_fragments.push(substr_fragment);
-            str_offset += fragment_len;
-            fragment_ix += 1;
-        }
-        LayoutRangeIter {
-            offset: Vector2F::zero(),
-            fragments: &self.substr_fragments,
-            fragment_ix: 0,
-        }
-    }
 }
 
-impl<'a> Iterator for LayoutRangeIter<'a> {
-    type Item = LayoutRun<'a>;
+impl<'a> Iterator for LayoutIter<'a> {
+    type Item = LayoutItem<'a>;
 
-    fn next(&mut self) -> Option<LayoutRun<'a>> {
+    fn next(&mut self) -> Option<LayoutItem<'a>> {
         if self.fragment_ix == self.fragments.len() {
             None
         } else {
@@ -156,18 +106,30 @@ impl<'a> Iterator for LayoutRangeIter<'a> {
             self.fragment_ix += 1;
             let offset = self.offset;
             self.offset += fragment.advance;
-            Some(LayoutRun { offset, fragment })
+            Some(LayoutItem { offset, fragment })
         }
     }
 }
 
-impl<'a> LayoutRun<'a> {
+impl<'a> LayoutItem<'a> {
     pub fn font(&self) -> &FontRef {
         &self.fragment.font
     }
 
-    pub fn glyphs(&self) -> RunIter<'a> {
-        RunIter {
+    pub fn script(&self) -> hb_script_t {
+        self.fragment.script
+    }
+
+    pub fn direction(&self) -> Direction {
+        self.fragment.direction
+    }
+
+    pub fn language(&self) -> Language {
+        self.fragment.language
+    }
+
+    pub fn glyphs(&self) -> FragmentIter<'a> {
+        FragmentIter {
             offset: self.offset,
             fragment: self.fragment,
             glyph_ix: 0,
@@ -175,17 +137,17 @@ impl<'a> LayoutRun<'a> {
     }
 }
 
-impl<'a> Iterator for RunIter<'a> {
-    type Item = GlyphInfo;
+impl<'a> Iterator for FragmentIter<'a> {
+    type Item = FragmentItem<'a>;
 
-    fn next(&mut self) -> Option<GlyphInfo> {
+    fn next(&mut self) -> Option<FragmentItem<'a>> {
         if self.glyph_ix == self.fragment.glyphs.len() {
             None
         } else {
             let glyph = &self.fragment.glyphs[self.glyph_ix];
             self.glyph_ix += 1;
-            Some(GlyphInfo {
-                glyph_id: glyph.glyph_id,
+            Some(FragmentItem {
+                glyph,
                 offset: self.offset + glyph.offset,
             })
         }
@@ -194,7 +156,7 @@ impl<'a> Iterator for RunIter<'a> {
 
 /// Figure out the script for the initial part of the buffer, and also
 /// return the length of the run where that script is valid.
-pub(crate) fn get_script_run(text: &str) -> (hb_script_t, usize) {
+fn get_script_run(text: &str) -> (hb_script_t, usize) {
     let mut char_iter = text.chars();
     if let Some(cp) = char_iter.next() {
         let mut current_script = lookup_script(cp.into());
