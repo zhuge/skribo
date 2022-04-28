@@ -1,35 +1,28 @@
 //! Rust-native Unicode functions for harfbuzz
 
-use std::cmp::Ordering;
 use std::ffi::c_void;
 use std::ptr::null_mut;
 
-use harfbuzz::Buffer;
 use harfbuzz_sys::{
-    hb_bool_t, hb_buffer_set_unicode_funcs, hb_codepoint_t, hb_script_t,
+    hb_bool_t, hb_codepoint_t, hb_script_t,
     hb_unicode_combining_class_t, hb_unicode_funcs_create,
     hb_unicode_funcs_set_combining_class_func, hb_unicode_funcs_set_compose_func,
     hb_unicode_funcs_set_decompose_func, hb_unicode_funcs_set_mirroring_func,
-    hb_unicode_funcs_set_script_func, hb_unicode_funcs_t, HB_SCRIPT_UNKNOWN,
+    hb_unicode_funcs_set_script_func, hb_unicode_funcs_t,
 };
 
 use unicode_normalization::char::{canonical_combining_class, compose};
 
 use crate::tables::{
-    CANONICAL_DECOMP_KEY, CANONICAL_DECOMP_VAL, MIRROR_KEY, MIRROR_VAL, SCRIPT_KEY, SCRIPT_VAL,
+    CANONICAL_DECOMP_KEY, CANONICAL_DECOMP_VAL, MIRROR_KEY, MIRROR_VAL,
 };
 
-fn make_unicode_funcs() -> *mut hb_unicode_funcs_t {
+use crate::script;
+
+pub fn hb_unicode_funcs() -> *mut hb_unicode_funcs_t {
+    // TODO: probably want to lazy static initialize this
     unsafe {
         let funcs_ptr = hb_unicode_funcs_create(null_mut());
-        funcs_ptr
-    }
-}
-
-pub fn install_unicode_funcs(buffer: &mut Buffer) {
-    // TODO: probably want to lazy static initialize this
-    let funcs_ptr = make_unicode_funcs();
-    unsafe {
         hb_unicode_funcs_set_combining_class_func(
             funcs_ptr,
             Some(unicode_combining_class),
@@ -40,9 +33,35 @@ pub fn install_unicode_funcs(buffer: &mut Buffer) {
         hb_unicode_funcs_set_decompose_func(funcs_ptr, Some(unicode_decompose), null_mut(), None);
         hb_unicode_funcs_set_mirroring_func(funcs_ptr, Some(unicode_mirror), null_mut(), None);
         hb_unicode_funcs_set_script_func(funcs_ptr, Some(unicode_script), null_mut(), None);
-        hb_buffer_set_unicode_funcs(buffer.as_ptr(), funcs_ptr);
+        // hb_buffer_set_unicode_funcs(buffer.as_ptr(), funcs_ptr);
+        funcs_ptr
     }
 }
+
+// fn make_unicode_funcs() -> *mut hb_unicode_funcs_t {
+//     unsafe {
+//         let funcs_ptr = hb_unicode_funcs_create(null_mut());
+//         funcs_ptr
+//     }
+// }
+
+// pub fn install_unicode_funcs(buffer: &mut Buffer) {
+//     // TODO: probably want to lazy static initialize this
+//     let funcs_ptr = make_unicode_funcs();
+//     unsafe {
+//         hb_unicode_funcs_set_combining_class_func(
+//             funcs_ptr,
+//             Some(unicode_combining_class),
+//             null_mut(),
+//             None,
+//         );
+//         hb_unicode_funcs_set_compose_func(funcs_ptr, Some(unicode_compose), null_mut(), None);
+//         hb_unicode_funcs_set_decompose_func(funcs_ptr, Some(unicode_decompose), null_mut(), None);
+//         hb_unicode_funcs_set_mirroring_func(funcs_ptr, Some(unicode_mirror), null_mut(), None);
+//         hb_unicode_funcs_set_script_func(funcs_ptr, Some(unicode_script), null_mut(), None);
+//         hb_buffer_set_unicode_funcs(buffer.as_ptr(), funcs_ptr);
+//     }
+// }
 
 unsafe extern "C" fn unicode_combining_class(
     _ufuncs: *mut hb_unicode_funcs_t,
@@ -113,35 +132,12 @@ unsafe extern "C" fn unicode_decompose(
     }
 }
 
-/// Lookup the script property of a Codepoint.
-///
-/// The `hb_script_t` type is a big-endian encoding of the 4-byte string; this can also
-/// be used for other purposes such as script matching during itemization.
-///
-/// Note that for unknown script, the unknown script value is returned ("Zzzz").
-pub fn lookup_script(query: u32) -> hb_script_t {
-    let pos = SCRIPT_KEY.binary_search_by(|&(s, e)| {
-        if s > query {
-            Ordering::Greater
-        } else if e < query {
-            Ordering::Less
-        } else {
-            Ordering::Equal
-        }
-    });
-    if let Ok(ix) = pos {
-        SCRIPT_VAL[ix]
-    } else {
-        HB_SCRIPT_UNKNOWN
-    }
-}
-
 unsafe extern "C" fn unicode_script(
     _ufuncs: *mut hb_unicode_funcs_t,
     unicode: hb_codepoint_t,
     _user_data: *mut c_void,
 ) -> hb_script_t {
-    lookup_script(unicode)
+    script::lookup_script(unicode)
 }
 
 unsafe extern "C" fn unicode_mirror(

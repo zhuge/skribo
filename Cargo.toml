@@ -10,6 +10,9 @@ description = "A Rust library for low-level text layout."
 readme = "README.md"
 categories = ["graphics", "text-processing"]
 
+[features]
+loader-freetype-default = ["font-kit/loader-freetype-default"]
+
 [dependencies]
 harfbuzz = "0.4.0"
 harfbuzz-sys = "0.5.0"
@@ -17,3 +20,11 @@ font-kit = { version = "0.10"} #, features = ["loader-freetype-default"] }
 pathfinder_geometry = "0.5.1"
 unicode-normalization = "0.1.13"
 log = "0.4.11"
+
+[target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
+core-foundation = "0.9"
+core-graphics = "0.22"
+core-text = "19.1.0"
+
+[target.'cfg(not(any(target_family = "windows", target_os = "macos", target_os = "ios")))'.dependencies]
+freetype = "0.7"

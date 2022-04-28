@@ -68,12 +68,7 @@ impl SimpleSurface {
         Ok(())
     }
 
-    fn paint_layout_session<S: AsRef<str>>(
-        &mut self,
-        layout: &mut Layout<S>,
-        x: i32,
-        y: i32,
-    ) {
+    fn paint_layout_session<S: AsRef<str>>(&mut self, layout: &mut Layout<S>, x: i32, y: i32) {
         for fragment in layout.fragments() {
             let font = fragment.font();
             let size = 32.0; // TODO: probably should get this from run

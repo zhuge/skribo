@@ -1,12 +1,12 @@
 //! Retained layout that supports substring queries.
 
-use harfbuzz::sys::{hb_script_t, HB_SCRIPT_COMMON, HB_SCRIPT_INHERITED, HB_SCRIPT_UNKNOWN};
+use harfbuzz::sys::{hb_script_t};
 use harfbuzz::{Direction, Language};
 
 use pathfinder_geometry::vector::Vector2F;
 
-use crate::hb_layout::layout_fragment;
-use crate::unicode_funcs::lookup_script;
+use crate::shape::shape;
+use crate::script::get_script_run;
 use crate::{FontCollection, FontRef, TextStyle};
 
 #[allow(unused)]
@@ -71,7 +71,7 @@ impl<S: AsRef<str>> Layout<S> {
             let (script, script_len) = get_script_run(&text.as_ref()[i..]);
             let script_substr = &text.as_ref()[i..i + script_len];
             for (range, font) in collection.itemize(script_substr) {
-                let fragment = layout_fragment(style, font, script, &script_substr[range]);
+                let fragment = shape(style, font, script, &script_substr[range]);
                 fragments.push(fragment);
             }
             i += script_len;
@@ -154,29 +154,4 @@ impl<'a> Iterator for FragmentIter<'a> {
     }
 }
 
-/// Figure out the script for the initial part of the buffer, and also
-/// return the length of the run where that script is valid.
-fn get_script_run(text: &str) -> (hb_script_t, usize) {
-    let mut char_iter = text.chars();
-    if let Some(cp) = char_iter.next() {
-        let mut current_script = lookup_script(cp.into());
-        let mut len = cp.len_utf8();
-        while let Some(cp) = char_iter.next() {
-            let script = lookup_script(cp.into());
-            if script != current_script {
-                if current_script == HB_SCRIPT_INHERITED || current_script == HB_SCRIPT_COMMON {
-                    current_script = script;
-                } else if script != HB_SCRIPT_INHERITED && script != HB_SCRIPT_COMMON {
-                    break;
-                }
-            }
-            len += cp.len_utf8();
-        }
-        if current_script == HB_SCRIPT_INHERITED {
-            current_script = HB_SCRIPT_COMMON;
-        }
-        (current_script, len)
-    } else {
-        (HB_SCRIPT_UNKNOWN, 0)
-    }
-}
+
