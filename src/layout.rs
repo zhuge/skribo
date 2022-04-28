@@ -1,12 +1,12 @@
 //! Retained layout that supports substring queries.
 
-use harfbuzz::sys::{hb_script_t};
+use harfbuzz::sys::hb_script_t;
 use harfbuzz::{Direction, Language};
 
 use pathfinder_geometry::vector::Vector2F;
 
+use crate::script::ScriptIter;
 use crate::shape::shape;
-use crate::script::get_script_run;
 use crate::{FontCollection, FontRef, TextStyle};
 
 #[allow(unused)]
@@ -65,16 +65,12 @@ pub struct FragmentItem<'a> {
 
 impl<S: AsRef<str>> Layout<S> {
     pub fn create(text: S, style: &TextStyle, collection: &FontCollection) -> Layout<S> {
-        let mut i = 0;
         let mut fragments = Vec::new();
-        while i < text.as_ref().len() {
-            let (script, script_len) = get_script_run(&text.as_ref()[i..]);
-            let script_substr = &text.as_ref()[i..i + script_len];
-            for (range, font) in collection.itemize(script_substr) {
-                let fragment = shape(style, font, script, &script_substr[range]);
+        for (script, substr) in ScriptIter::new(&text.as_ref()[..]) {
+            for (range, font) in collection.itemize(substr) {
+                let fragment = shape(style, font, script, &substr[range]);
                 fragments.push(fragment);
             }
-            i += script_len;
         }
 
         Layout {
@@ -153,5 +149,3 @@ impl<'a> Iterator for FragmentIter<'a> {
         }
     }
 }
-
-

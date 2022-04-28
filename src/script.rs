@@ -1,13 +1,8 @@
 use std::cmp::Ordering;
 
-use crate::tables::{
-    SCRIPT_KEY, SCRIPT_VAL,
-};
+use crate::tables::{SCRIPT_KEY, SCRIPT_VAL};
 
-use harfbuzz_sys::{
-    hb_script_t, 
-    HB_SCRIPT_COMMON, HB_SCRIPT_INHERITED, HB_SCRIPT_UNKNOWN
-};
+use harfbuzz_sys::{hb_script_t, HB_SCRIPT_COMMON, HB_SCRIPT_INHERITED, HB_SCRIPT_UNKNOWN};
 
 /// Lookup the script property of a Codepoint.
 ///
@@ -32,29 +27,44 @@ pub fn lookup_script(query: u32) -> hb_script_t {
     }
 }
 
-/// Figure out the script for the initial part of the buffer, and also
-/// return the length of the run where that script is valid.
-pub fn get_script_run(text: &str) -> (hb_script_t, usize) {
-    let mut char_iter = text.chars();
-    if let Some(cp) = char_iter.next() {
-        let mut current_script = lookup_script(cp.into());
-        let mut len = cp.len_utf8();
-        while let Some(cp) = char_iter.next() {
-            let script = lookup_script(cp.into());
-            if script != current_script {
-                if current_script == HB_SCRIPT_INHERITED || current_script == HB_SCRIPT_COMMON {
-                    current_script = script;
-                } else if script != HB_SCRIPT_INHERITED && script != HB_SCRIPT_COMMON {
-                    break;
+pub struct ScriptIter<'a> {
+    text: &'a str,
+}
+
+impl<'a> ScriptIter<'a> {
+    pub fn new(text: &'a str) -> Self {
+        Self { text }
+    }
+}
+
+impl<'a> Iterator for ScriptIter<'a> {
+    type Item = (hb_script_t, &'a str);
+
+    fn next(&mut self) -> Option<(hb_script_t, &'a str)> {
+        let mut char_iter = self.text.chars();
+        if let Some(cp) = char_iter.next() {
+            let mut current_script = lookup_script(cp.into());
+            let mut len = cp.len_utf8();
+            while let Some(cp) = char_iter.next() {
+                let script = lookup_script(cp.into());
+                if script != current_script {
+                    if current_script == HB_SCRIPT_INHERITED || current_script == HB_SCRIPT_COMMON {
+                        current_script = script;
+                    } else if script != HB_SCRIPT_INHERITED && script != HB_SCRIPT_COMMON {
+                        break;
+                    }
                 }
+                len += cp.len_utf8();
             }
-            len += cp.len_utf8();
+            if current_script == HB_SCRIPT_INHERITED {
+                current_script = HB_SCRIPT_COMMON;
+            }
+
+            let substr = &self.text[..len];
+            self.text = &self.text[len..];
+            Some((current_script, substr))
+        } else {
+            None
         }
-        if current_script == HB_SCRIPT_INHERITED {
-            current_script = HB_SCRIPT_COMMON;
-        }
-        (current_script, len)
-    } else {
-        (HB_SCRIPT_UNKNOWN, 0)
     }
 }
