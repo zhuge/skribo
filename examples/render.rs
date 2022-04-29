@@ -69,14 +69,15 @@ impl SimpleSurface {
     }
 
     fn paint_layout_session<S: AsRef<str>>(&mut self, layout: &mut Layout<S>, x: i32, y: i32) {
-        for fragment in layout.fragments() {
+        for (fragment, fragment_offset) in layout.fragments() {
             let font = fragment.font();
             let size = 32.0; // TODO: probably should get this from run
             println!("fragment, font = {:?}", font);
-            for run in fragment.glyphs() {
-                let glyph_id = run.glyph.glyph_id;
-                let glyph_x = (run.offset.x() as i32) + x;
-                let glyph_y = (run.offset.y() as i32) + y;
+            for (glyph, glyph_offset) in fragment.glyphs() {
+                let glyph_id = glyph.glyph_id;
+                let offset = fragment_offset + glyph_offset;
+                let glyph_x = offset.x() as i32 + x;
+                let glyph_y = offset.y() as i32 + y;
                 let bounds = font
                     .font
                     .raster_bounds(
@@ -117,7 +118,7 @@ impl SimpleSurface {
                         glyph_y + bounds.origin_y(),
                     );
                 }
-                println!("glyph {} @ {:?}", run.glyph.glyph_id, run.offset);
+                println!("glyph {} @ {:?}", glyph.glyph_id, offset);
             }
         }
     }
@@ -201,7 +202,7 @@ fn main() {
     let layout = layout(&style, &collection, &text);
     println!("{:?}", layout);
     */
-    let mut layout = Layout::create(&text, &style, &collection);
+    let mut layout = Layout::create(&text, style, &collection);
     let mut surface = SimpleSurface::new(200, 50);
     surface.paint_layout_session(&mut layout, 0, 35);
     surface.write_pgm("out.pgm").unwrap();

@@ -3,30 +3,31 @@
 mod hb_font;
 mod hb_unicode_funcs;
 
-use crate::layout::{Fragment, Glyph};
-use crate::{FontRef, TextStyle};
 use harfbuzz::{
     sys::{
         hb_buffer_get_glyph_infos, hb_buffer_get_glyph_positions, hb_glyph_info_get_glyph_flags,
         hb_script_t, hb_shape, HB_GLYPH_FLAG_UNSAFE_TO_BREAK,
     },
-    Buffer,
+    Buffer, Direction, Language,
 };
 use hb_font::HbFont;
 use hb_unicode_funcs::InstallUnicodeFunc;
 use pathfinder_geometry::vector::{vec2i, Vector2F};
+
+use crate::layout::Glyph;
+use crate::{FontRef, TextStyle};
 
 pub(crate) fn shape(
     style: &TextStyle,
     font: &FontRef,
     script: hb_script_t,
     text: &str,
-) -> Fragment {
+) -> (Direction, Language, Vec<Glyph>) {
     let mut b = Buffer::new();
     b.install_unicodd_funcs();
     b.add_str(text);
-    b.set_script(script);
     b.guess_segment_properties();
+    b.set_script(script);
     unsafe {
         let hb_font = HbFont::new(font);
         hb_shape(hb_font.hb_font, b.as_ptr(), std::ptr::null(), 0);
@@ -68,14 +69,6 @@ pub(crate) fn shape(
             glyphs.push(g);
         }
 
-        Fragment {
-            substr_len: text.len(),
-            script,
-            language: b.get_language(),
-            direction: b.get_direction(),
-            glyphs: glyphs,
-            advance: total_adv,
-            font: font.clone(),
-        }
+        (b.get_direction(), b.get_language(), glyphs)
     }
 }

@@ -1,5 +1,7 @@
 //! Retained layout that supports substring queries.
 
+use std::ops::Range;
+
 use harfbuzz::sys::hb_script_t;
 use harfbuzz::{Direction, Language};
 
@@ -17,21 +19,16 @@ pub struct Layout<S: AsRef<str>> {
 }
 
 #[allow(unused)]
-pub(crate) struct Fragment {
-    // Length of substring covered by this fragment.
-    pub(crate) substr_len: usize,
-    pub(crate) script: hb_script_t,
-    pub(crate) language: Language,
-    pub(crate) direction: Direction,
-    pub(crate) advance: Vector2F,
-    pub(crate) glyphs: Vec<Glyph>,
-    pub(crate) font: FontRef,
+pub struct Fragment {
+    text_range: Range<usize>,
+    script: hb_script_t,
+    language: Language,
+    direction: Direction,
+    advance: Vector2F,
+    glyphs: Vec<Glyph>,
+    font: FontRef,
 }
 
-// This should probably be renamed "glyph".
-//
-// Discussion topic: this is so similar to hb_glyph_info_t, maybe we
-// should just use that.
 #[allow(unused)]
 pub struct Glyph {
     pub cluster: u32,
@@ -41,113 +38,122 @@ pub struct Glyph {
     pub unsafe_to_break: bool,
 }
 
-pub struct LayoutIter<'a> {
-    fragments: &'a [Fragment],
-    offset: Vector2F,
-    fragment_ix: usize,
-}
-
-pub struct LayoutItem<'a> {
-    pub offset: Vector2F,
-    fragment: &'a Fragment,
-}
-
-pub struct FragmentIter<'a> {
-    offset: Vector2F,
-    fragment: &'a Fragment,
-    glyph_ix: usize,
-}
-
-pub struct FragmentItem<'a> {
-    pub offset: Vector2F,
-    pub glyph: &'a Glyph,
-}
-
 impl<S: AsRef<str>> Layout<S> {
-    pub fn create(text: S, style: &TextStyle, collection: &FontCollection) -> Layout<S> {
+    pub fn create(text: S, style: TextStyle, collection: &FontCollection) -> Layout<S> {
         let mut fragments = Vec::new();
+
         let tx = &text.as_ref()[..];
         for (script_range, script) in ScriptItemizer::new(tx) {
-            let substr = &tx[script_range];
+            let substr = &tx[script_range.clone()];
+            let start = script_range.start;
             for (range, font) in collection.itemize(substr) {
-                let fragment = shape(style, font, script, &substr[range]);
-                fragments.push(fragment);
+                let (direction, language, glyphs) =
+                    shape(&style, font, script, &substr[range.clone()]);
+
+                let total_adv_x: f32 = glyphs.iter().map(|g| g.advance.x()).sum();
+                let total_adv_y: f32 = glyphs.iter().map(|g| g.advance.y()).sum();
+                fragments.push(Fragment {
+                    text_range: (start + range.clone().start)..(start + range.end),
+                    script,
+                    language,
+                    direction,
+                    advance: Vector2F::new(total_adv_x, total_adv_y),
+                    glyphs,
+                    font: font.clone(),
+                });
             }
         }
 
         Layout {
             text,
-            // Does this clone mean we should take style arg by-move?
-            style: style.clone(),
+            style,
             fragments,
         }
     }
 
     /// Iterate through all glyphs in the layout.
-    pub fn fragments(&self) -> LayoutIter {
-        LayoutIter {
+    pub fn fragments(&self) -> FragmentIter {
+        FragmentIter {
             offset: Vector2F::zero(),
             fragments: &self.fragments,
-            fragment_ix: 0,
+            ix: 0,
         }
     }
 }
 
-impl<'a> Iterator for LayoutIter<'a> {
-    type Item = LayoutItem<'a>;
-
-    fn next(&mut self) -> Option<LayoutItem<'a>> {
-        if self.fragment_ix == self.fragments.len() {
-            None
-        } else {
-            let fragment = &self.fragments[self.fragment_ix];
-            self.fragment_ix += 1;
-            let offset = self.offset;
-            self.offset += fragment.advance;
-            Some(LayoutItem { offset, fragment })
-        }
-    }
-}
-
-impl<'a> LayoutItem<'a> {
+#[allow(unused)]
+impl Fragment {
     pub fn font(&self) -> &FontRef {
-        &self.fragment.font
+        &self.font
     }
 
     pub fn script(&self) -> hb_script_t {
-        self.fragment.script
+        self.script
     }
 
     pub fn direction(&self) -> Direction {
-        self.fragment.direction
+        self.direction
     }
 
     pub fn language(&self) -> Language {
-        self.fragment.language
+        self.language
     }
 
-    pub fn glyphs(&self) -> FragmentIter<'a> {
-        FragmentIter {
-            offset: self.offset,
-            fragment: self.fragment,
-            glyph_ix: 0,
+    pub fn advance(&self) -> Vector2F {
+        self.advance
+    }
+
+    pub fn text_range(&self) -> Range<usize> {
+        self.text_range.clone()
+    }
+
+    pub fn glyphs(&self) -> GlyphIter {
+        GlyphIter {
+            glyphs: &self.glyphs,
+            offset: Vector2F::zero(),
+            ix: 0,
         }
     }
 }
 
-impl<'a> Iterator for FragmentIter<'a> {
-    type Item = FragmentItem<'a>;
+pub struct FragmentIter<'a> {
+    fragments: &'a [Fragment],
+    offset: Vector2F,
+    ix: usize,
+}
 
-    fn next(&mut self) -> Option<FragmentItem<'a>> {
-        if self.glyph_ix == self.fragment.glyphs.len() {
+impl<'a> Iterator for FragmentIter<'a> {
+    type Item = (&'a Fragment, Vector2F);
+
+    fn next(&mut self) -> Option<(&'a Fragment, Vector2F)> {
+        if self.ix == self.fragments.len() {
             None
         } else {
-            let glyph = &self.fragment.glyphs[self.glyph_ix];
-            self.glyph_ix += 1;
-            Some(FragmentItem {
-                glyph,
-                offset: self.offset + glyph.offset,
-            })
+            let fragment = &self.fragments[self.ix];
+            self.ix += 1;
+            let offset = self.offset;
+            self.offset += fragment.advance;
+            Some((fragment, offset))
+        }
+    }
+}
+
+pub struct GlyphIter<'a> {
+    glyphs: &'a [Glyph],
+    offset: Vector2F,
+    ix: usize,
+}
+
+impl<'a> Iterator for GlyphIter<'a> {
+    type Item = (&'a Glyph, Vector2F);
+
+    fn next(&mut self) -> Option<(&'a Glyph, Vector2F)> {
+        if self.ix == self.glyphs.len() {
+            None
+        } else {
+            let glyph = &self.glyphs[self.ix];
+            self.ix += 1;
+            Some((&glyph, self.offset + glyph.offset))
         }
     }
 }
