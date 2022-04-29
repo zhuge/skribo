@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::ops::Range;
 
 use crate::tables::{SCRIPT_KEY, SCRIPT_VAL};
 
@@ -27,22 +28,24 @@ pub fn lookup_script(query: u32) -> hb_script_t {
     }
 }
 
-pub struct ScriptIter<'a> {
+pub struct Itemizer<'a> {
     text: &'a str,
+    ix: usize,
 }
 
-impl<'a> ScriptIter<'a> {
+impl<'a> Itemizer<'a> {
     pub fn new(text: &'a str) -> Self {
-        Self { text }
+        Self { text, ix: 0 }
     }
 }
 
-impl<'a> Iterator for ScriptIter<'a> {
-    type Item = (hb_script_t, &'a str);
+impl<'a> Iterator for Itemizer<'a> {
+    type Item = (Range<usize>, hb_script_t);
 
-    fn next(&mut self) -> Option<(hb_script_t, &'a str)> {
-        let mut char_iter = self.text.chars();
+    fn next(&mut self) -> Option<(Range<usize>, hb_script_t)> {
+        let mut char_iter = self.text[self.ix..].chars();
         if let Some(cp) = char_iter.next() {
+            let beg = self.ix;
             let mut current_script = lookup_script(cp.into());
             let mut len = cp.len_utf8();
             while let Some(cp) = char_iter.next() {
@@ -59,10 +62,8 @@ impl<'a> Iterator for ScriptIter<'a> {
             if current_script == HB_SCRIPT_INHERITED {
                 current_script = HB_SCRIPT_COMMON;
             }
-
-            let substr = &self.text[..len];
-            self.text = &self.text[len..];
-            Some((current_script, substr))
+            self.ix += len;
+            Some((beg..self.ix, current_script))
         } else {
             None
         }

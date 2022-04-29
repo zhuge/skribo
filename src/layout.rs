@@ -5,7 +5,7 @@ use harfbuzz::{Direction, Language};
 
 use pathfinder_geometry::vector::Vector2F;
 
-use crate::script::ScriptIter;
+use crate::script::Itemizer as ScriptItemizer;
 use crate::shape::shape;
 use crate::{FontCollection, FontRef, TextStyle};
 
@@ -66,7 +66,9 @@ pub struct FragmentItem<'a> {
 impl<S: AsRef<str>> Layout<S> {
     pub fn create(text: S, style: &TextStyle, collection: &FontCollection) -> Layout<S> {
         let mut fragments = Vec::new();
-        for (script, substr) in ScriptIter::new(&text.as_ref()[..]) {
+        let tx = &text.as_ref()[..];
+        for (script_range, script) in ScriptItemizer::new(tx) {
+            let substr = &tx[script_range];
             for (range, font) in collection.itemize(substr) {
                 let fragment = shape(style, font, script, &substr[range]);
                 fragments.push(fragment);
