@@ -46,6 +46,7 @@ pub(crate) fn shape(
         // TODO: we might want to store this size-invariant.
         let scale = style.size / (font.font.metrics().units_per_em as f32);
         for (glyph, pos) in glyph_infos.iter().zip(glyph_positions.iter()) {
+            let pos = hb_font.convert_hb_pos(pos);
             let adv = vec2i(pos.x_advance, pos.y_advance).to_f32() * scale;
             let offset = vec2i(pos.x_offset, pos.y_offset).to_f32() * scale;
             let flags = hb_glyph_info_get_glyph_flags(glyph);

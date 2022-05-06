@@ -3,7 +3,7 @@
 use std::ffi::c_void;
 use std::ptr::null_mut;
 
-use harfbuzz_sys::{
+use harfbuzz::sys::{
     hb_bool_t, hb_codepoint_t, hb_script_t, hb_unicode_combining_class_t, hb_unicode_funcs_create,
     hb_unicode_funcs_set_combining_class_func, hb_unicode_funcs_set_compose_func,
     hb_unicode_funcs_set_decompose_func, hb_unicode_funcs_set_mirroring_func,

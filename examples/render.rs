@@ -7,7 +7,25 @@ use font_kit::canvas::{Canvas, Format, RasterizationOptions};
 use font_kit::family_name::FamilyName;
 use font_kit::hinting::HintingOptions;
 use font_kit::properties::Properties;
-use font_kit::source::SystemSource;
+
+#[cfg(any(target_os = "macos", target_os = "ios",))]
+pub use font_kit::sources::core_text::CoreTextSource as SystemSource;
+#[cfg(any(target_family = "windows"))]
+pub use font_kit::sources::directwrite::DirectWriteSource as SystemSource;
+#[cfg(any(
+    not(any(
+        target_os = "android",
+        target_os = "macos",
+        target_os = "ios",
+        target_family = "windows",
+        target_arch = "wasm32"
+    )),
+    feature = "source-fontconfig-default"
+))]
+pub use font_kit::sources::fontconfig::FontconfigSource as SystemSource;
+#[cfg(all(target_os = "android", not(feature = "source-fontconfig-default")))]
+pub use font_kit::sources::fs::FsSource as SystemSource;
+
 
 use skribo::{FontCollection, FontFamily, Layout, TextStyle};
 

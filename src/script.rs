@@ -3,7 +3,7 @@ use std::ops::Range;
 
 use crate::tables::{SCRIPT_KEY, SCRIPT_VAL};
 
-use harfbuzz_sys::{hb_script_t, HB_SCRIPT_COMMON, HB_SCRIPT_INHERITED, HB_SCRIPT_UNKNOWN};
+use harfbuzz::sys::{hb_script_t, HB_SCRIPT_COMMON, HB_SCRIPT_INHERITED, HB_SCRIPT_UNKNOWN};
 
 /// Lookup the script property of a Codepoint.
 ///

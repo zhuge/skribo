@@ -1,5 +1,5 @@
 use core_foundation::base::TCFType;
-use harfbuzz::sys::{coretext::hb_coretext_font_create, hb_font_t};
+use harfbuzz::sys::{coretext::hb_coretext_font_create, hb_font_t, hb_glyph_position_t};
 
 use crate::FontRef;
 
@@ -14,5 +14,9 @@ impl HbFont {
             let hb_font = hb_coretext_font_create(core_text_font.as_concrete_TypeRef() as *mut _);
             HbFont { hb_font }
         }
+    }
+
+    pub fn convert_hb_pos(&self, pos: &hb_glyph_position_t) -> hb_glyph_position_t {
+        *pos
     }
 }

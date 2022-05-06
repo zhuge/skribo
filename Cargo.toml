@@ -11,15 +11,18 @@ readme = "README.md"
 categories = ["graphics", "text-processing"]
 
 [features]
-loader-freetype-default = ["font-kit/loader-freetype-default"]
+loader-freetype-default = ["font-kit/loader-freetype-default", "freetype", "harfbuzz/build-native-freetype"]
 
 [dependencies]
-harfbuzz = "0.4.0"
-harfbuzz-sys = "0.5.0"
+harfbuzz = {git = "https://github.com/zhuge/rust-harfbuzz.git"}
 font-kit = { version = "0.10"} #, features = ["loader-freetype-default"] }
 pathfinder_geometry = "0.5.1"
 unicode-normalization = "0.1.13"
 log = "0.4.11"
+
+[dependencies.freetype]
+version = "0.7"
+optional = true
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
 core-foundation = "0.9"
