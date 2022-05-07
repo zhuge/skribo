@@ -11,7 +11,7 @@ readme = "README.md"
 categories = ["graphics", "text-processing"]
 
 [features]
-default = ["loader-freetype-default"]
+#default = ["loader-freetype-default"]
 loader-freetype-default = ["font-kit/loader-freetype-default", "freetype", "harfbuzz/build-native-freetype"]
 
 [dependencies]
