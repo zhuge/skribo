@@ -1,4 +1,4 @@
-use freetype::freetype::{FT_Done_Face, FT_Set_Char_Size};
+use freetype::freetype::FT_Done_Face;
 use harfbuzz::sys::{hb_font_t, hb_ft_font_create_referenced, hb_glyph_position_t};
 
 use crate::FontRef;

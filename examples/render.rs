@@ -26,7 +26,6 @@ pub use font_kit::sources::fontconfig::FontconfigSource as SystemSource;
 #[cfg(all(target_os = "android", not(feature = "source-fontconfig-default")))]
 pub use font_kit::sources::fs::FsSource as SystemSource;
 
-
 use skribo::{FontCollection, FontFamily, Layout, TextStyle};
 
 use pathfinder_geometry::transform2d::Transform2F;

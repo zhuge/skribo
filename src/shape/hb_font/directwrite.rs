@@ -1,4 +1,9 @@
-use harfbuzz::{Blob, sys::{hb_font_t, hb_font_create, hb_glyph_position_t, directwrite::hb_directwrite_face_create}};
+use harfbuzz::{
+    sys::{
+        directwrite::hb_directwrite_face_create, hb_font_create, hb_font_t, hb_glyph_position_t,
+    },
+    Blob,
+};
 
 use crate::FontRef;
 
