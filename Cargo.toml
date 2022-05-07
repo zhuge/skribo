@@ -11,10 +11,11 @@ readme = "README.md"
 categories = ["graphics", "text-processing"]
 
 [features]
+default = ["loader-freetype-default"]
 loader-freetype-default = ["font-kit/loader-freetype-default", "freetype", "harfbuzz/build-native-freetype"]
 
 [dependencies]
-harfbuzz = {git = "https://github.com/zhuge/rust-harfbuzz.git"}
+harfbuzz = {git = "https://github.com/zhuge/rust-harfbuzz.git", rev = "f602d913e3a3eb31823436220a7268606ba1b7e1" }
 font-kit = { version = "0.10"} #, features = ["loader-freetype-default"] }
 pathfinder_geometry = "0.5.1"
 unicode-normalization = "0.1.13"
